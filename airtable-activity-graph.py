@@ -1,5 +1,5 @@
-import requests
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import datetime as dt
@@ -14,6 +14,11 @@ AIRTABLE_TABLE_NAME = config.AIRTABLE_TABLE_NAME
 
 AIRTABLE_URL = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}"
 
+### User config
+
+filter_data = True
+filter_window = 10
+
 def main():
 
     print("Making API call to AirTable..")
@@ -27,9 +32,11 @@ def main():
             data.append(record['fields'])
     df = pd.DataFrame(data)
 
-    # Debug
+    ### Debug
     # print(df)
     # df.to_csv("data.csv")
+
+    ### Daily Participation on All Locations
 
     print("Processing Data..")
     dates = [dt.datetime.strptime(time[:10], "%Y-%m-%d").date() for time in df.loc[:, 'Created']]
@@ -48,11 +55,53 @@ def main():
     plt.yticks(range(min(y), max(y) + 1))
 
     print("Saving Figure..")
-    plt.savefig('Daily River Image Uploads at All Locations.png')
+    plt.savefig('daily-river-image-uploads-at-all-locations.png')
 
-    plt.show() # must come after savefig(), as it wipes the plot
+    ### Daily Participation per Location
+
+    # Collect all Locations
+    locations = list(df.loc[:, 'Location'])
+    unique_locations = list(set(locations))
+    n_unique_locations = len(unique_locations)
+    print(f"{n_unique_locations} unique locations found")
+
+    # Create a dict with one key per location and an empty list as a value
+    locations_participation_data = {}
+
+    # Compute the daily participation as above for every location
+    for location in unique_locations:
+        # Find all time entries at the current location
+        local_df = df.query(f"Location == '{location}'")
+        # Get Upload Dates
+        location_dates = [dt.datetime.strptime(time[:10], "%Y-%m-%d").date() for time in local_df.loc[:, 'Created']]
+        # Count the number of uploads for every day
+        locations_participation_data[location] = [location_dates.count(date) for date in x]
+        # Apply averaging filter
+        if filter_data:
+            locations_participation_data[location] = np.convolve(locations_participation_data[location], np.ones(filter_window)/filter_window, mode='same').tolist()
+
+    # Plot for every location
+    fig, ax = plt.subplots()
+    handles = []
+    for idx, location in enumerate(unique_locations):
+        handle, = ax.plot(x, locations_participation_data[location])
+        handles.append(handle)
+
+    fig.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%b-%Y'))
+    fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=14))
+    ax.tick_params('x', labelrotation=45)
+    fig.subplots_adjust(bottom=0.2)
+
+    ax.legend(handles, unique_locations)
+
+    fig.suptitle(f"Daily River Image Uploads by Location{', filtered' if filter_data else ''}")
+    
+
+    print("Saving Figure..")
+    fig.savefig('daily-river-image-uploads-by-location.png')
 
     print("Done")
+    plt.show() # must come after any savefig, as it also clears the plots
 
 if __name__ == "__main__":
     main()
