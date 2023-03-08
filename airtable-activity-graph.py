@@ -1,5 +1,5 @@
-import requests
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import datetime as dt
@@ -14,6 +14,11 @@ AIRTABLE_TABLE_NAME = config.AIRTABLE_TABLE_NAME
 
 AIRTABLE_URL = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}"
 
+### User config
+
+filter_data = True
+filter_window = 10
+
 def main():
 
     print("Making API call to AirTable..")
@@ -27,7 +32,7 @@ def main():
             data.append(record['fields'])
     df = pd.DataFrame(data)
 
-    # Debug
+    ### Debug
     # print(df)
     # df.to_csv("data.csv")
 
@@ -42,17 +47,15 @@ def main():
     x = [end - dt.timedelta(days = x) for x in range(n_days)]
     y = [dates.count(date) for date in x]
     print(f"Average Uploads per Day: {len(dates)/len(x)}")
-    # plt.bar(x, y)
-    # plt.title('Daily River Image Uploads at All Locations')
-    # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%b-%Y'))
-    # plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=7))
-    # plt.gcf().autofmt_xdate()
-    # plt.yticks(range(min(y), max(y) + 1))
+    plt.bar(x, y)
+    plt.title('Daily River Image Uploads at All Locations')
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%b-%Y'))
+    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=7))
+    plt.gcf().autofmt_xdate()
+    plt.yticks(range(min(y), max(y) + 1))
 
-    # print("Saving Figure..")
-    # plt.savefig('Daily River Image Uploads at All Locations.png')
-
-    # plt.show() # must come after savefig(), as it wipes the plot
+    print("Saving Figure..")
+    plt.savefig('daily-river-image-uploads-at-all-locations.png')
 
     ### Daily Participation per Location
 
@@ -69,29 +72,36 @@ def main():
     for location in unique_locations:
         # Find all time entries at the current location
         local_df = df.query(f"Location == '{location}'")
-        print(local_df)
-        # Get Date
+        # Get Upload Dates
         location_dates = [dt.datetime.strptime(time[:10], "%Y-%m-%d").date() for time in local_df.loc[:, 'Created']]
-        # unique_location_dates = list(set(dates))
         # Count the number of uploads for every day
         locations_participation_data[location] = [location_dates.count(date) for date in x]
+        # Apply averaging filter
+        if filter_data:
+            locations_participation_data[location] = np.convolve(locations_participation_data[location], np.ones(filter_window)/filter_window, mode='same').tolist()
 
-    print(locations_participation_data)
     # Plot for every location
-    fig, axs = plt.subplots(n_unique_locations)
+    fig, ax = plt.subplots()
+    handles = []
     for idx, location in enumerate(unique_locations):
-        axs[idx].bar(x, locations_participation_data[location])
-        axs[idx].set_title(f"Daily Uploads at {location}")
-        fig.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%b-%Y'))
-        fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=7))
-        # axs[idx].date   .gcf().autofmt_xdate()
-        axs[idx].set_yticks(range(min(y), max(y) + 1))
+        handle, = ax.plot(x, locations_participation_data[location])
+        handles.append(handle)
+
+    fig.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%b-%Y'))
+    fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=14))
+    ax.tick_params('x', labelrotation=45)
+    fig.subplots_adjust(bottom=0.2)
+
+    ax.legend(handles, unique_locations)
+
+    fig.suptitle(f"Daily River Image Uploads by Location{', filtered' if filter_data else ''}")
+    
 
     print("Saving Figure..")
-    fig.savefig('Daily River Image Uploads by Location.png')
+    fig.savefig('daily-river-image-uploads-by-location.png')
 
     print("Done")
-    plt.show()
+    plt.show() # must come after any savefig, as it also clears the plots
 
 if __name__ == "__main__":
     main()
