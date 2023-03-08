@@ -1,4 +1,5 @@
-### How To Run (for Unix)
+# How To Run (for Unix)
+
 
 # first run the following command to install any required packages you might be missing
 $ pip3 install -r requirements.txt
