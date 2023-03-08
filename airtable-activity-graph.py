@@ -31,6 +31,8 @@ def main():
     # print(df)
     # df.to_csv("data.csv")
 
+    ### Daily Participation on All Locations
+
     print("Processing Data..")
     dates = [dt.datetime.strptime(time[:10], "%Y-%m-%d").date() for time in df.loc[:, 'Created']]
     unique_dates = list(set(dates)) # list(set(*)) removes duplicates
@@ -40,19 +42,56 @@ def main():
     x = [end - dt.timedelta(days = x) for x in range(n_days)]
     y = [dates.count(date) for date in x]
     print(f"Average Uploads per Day: {len(dates)/len(x)}")
-    plt.bar(x, y)
-    plt.title('Daily River Image Uploads at All Locations')
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%b-%Y'))
-    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=7))
-    plt.gcf().autofmt_xdate()
-    plt.yticks(range(min(y), max(y) + 1))
+    # plt.bar(x, y)
+    # plt.title('Daily River Image Uploads at All Locations')
+    # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%b-%Y'))
+    # plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=7))
+    # plt.gcf().autofmt_xdate()
+    # plt.yticks(range(min(y), max(y) + 1))
+
+    # print("Saving Figure..")
+    # plt.savefig('Daily River Image Uploads at All Locations.png')
+
+    # plt.show() # must come after savefig(), as it wipes the plot
+
+    ### Daily Participation per Location
+
+    # Collect all Locations
+    locations = list(df.loc[:, 'Location'])
+    unique_locations = list(set(locations))
+    n_unique_locations = len(unique_locations)
+    print(f"{n_unique_locations} unique locations found")
+
+    # Create a dict with one key per location and an empty list as a value
+    locations_participation_data = {}
+
+    # Compute the daily participation as above for every location
+    for location in unique_locations:
+        # Find all time entries at the current location
+        local_df = df.query(f"Location == '{location}'")
+        print(local_df)
+        # Get Date
+        location_dates = [dt.datetime.strptime(time[:10], "%Y-%m-%d").date() for time in local_df.loc[:, 'Created']]
+        # unique_location_dates = list(set(dates))
+        # Count the number of uploads for every day
+        locations_participation_data[location] = [location_dates.count(date) for date in x]
+
+    print(locations_participation_data)
+    # Plot for every location
+    fig, axs = plt.subplots(n_unique_locations)
+    for idx, location in enumerate(unique_locations):
+        axs[idx].bar(x, locations_participation_data[location])
+        axs[idx].set_title(f"Daily Uploads at {location}")
+        fig.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%b-%Y'))
+        fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=7))
+        # axs[idx].date   .gcf().autofmt_xdate()
+        axs[idx].set_yticks(range(min(y), max(y) + 1))
 
     print("Saving Figure..")
-    plt.savefig('Daily River Image Uploads at All Locations.png')
-
-    plt.show() # must come after savefig(), as it wipes the plot
+    fig.savefig('Daily River Image Uploads by Location.png')
 
     print("Done")
+    plt.show()
 
 if __name__ == "__main__":
     main()
