@@ -14,10 +14,11 @@ AIRTABLE_TABLE_NAME = config.AIRTABLE_TABLE_NAME
 
 AIRTABLE_URL = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}"
 
-### User config
+# User config
 
 filter_data = True
 filter_window = 10
+
 
 def main():
 
@@ -26,25 +27,26 @@ def main():
     table = Table(AIRTABLE_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
     table.all()
 
-    for records in table.iterate(): # records is a list of dictionaries (one "records" per table I believe)
+    for records in table.iterate():  # records is a list of dictionaries (one "records" per table I believe)
         # [{'id': [{}, ... ,{}]}, {'id': ..}, {'id': ..}, {'id': ..}]
         for record in records:
             data.append(record['fields'])
     df = pd.DataFrame(data)
 
-    ### Debug
+    # Debug
     # print(df)
     # df.to_csv("data.csv")
 
-    ### Daily Participation on All Locations
+    # Daily Participation on All Locations
 
     print("Processing Data..")
-    dates = [dt.datetime.strptime(time[:10], "%Y-%m-%d").date() for time in df.loc[:, 'Created']]
-    unique_dates = list(set(dates)) # list(set(*)) removes duplicates
+    dates = [dt.datetime.strptime(time[:10], "%Y-%m-%d").date()
+             for time in df.loc[:, 'Created']]
+    unique_dates = list(set(dates))  # list(set(*)) removes duplicates
     start = min(unique_dates)
     end = max(unique_dates)
     n_days = (end-start).days
-    x = [end - dt.timedelta(days = x) for x in range(n_days)]
+    x = [end - dt.timedelta(days=x) for x in range(n_days)]
     y = [dates.count(date) for date in x]
     print(f"Average Uploads per Day: {len(dates)/len(x)}")
     plt.bar(x, y)
@@ -53,11 +55,13 @@ def main():
     plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=7))
     plt.gcf().autofmt_xdate()
     plt.yticks(range(min(y), max(y) + 1))
+    plt.ylabel("Number of Uploads per Day")
+
 
     print("Saving Figure..")
     plt.savefig('daily-river-image-uploads-at-all-locations.png')
 
-    ### Daily Participation per Location
+    # Daily Participation per Location
 
     # Collect all Locations
     locations = list(df.loc[:, 'Location'])
@@ -73,12 +77,15 @@ def main():
         # Find all time entries at the current location
         local_df = df.query(f"Location == '{location}'")
         # Get Upload Dates
-        location_dates = [dt.datetime.strptime(time[:10], "%Y-%m-%d").date() for time in local_df.loc[:, 'Created']]
+        location_dates = [dt.datetime.strptime(
+            time[:10], "%Y-%m-%d").date() for time in local_df.loc[:, 'Created']]
         # Count the number of uploads for every day
-        locations_participation_data[location] = [location_dates.count(date) for date in x]
+        locations_participation_data[location] = [
+            location_dates.count(date) for date in x]
         # Apply averaging filter
         if filter_data:
-            locations_participation_data[location] = np.convolve(locations_participation_data[location], np.ones(filter_window)/filter_window, mode='same').tolist()
+            locations_participation_data[location] = np.convolve(
+                locations_participation_data[location], np.ones(filter_window)/filter_window, mode='same').tolist()
 
     # Plot for every location
     fig, ax = plt.subplots()
@@ -91,17 +98,18 @@ def main():
     fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=14))
     ax.tick_params('x', labelrotation=45)
     fig.subplots_adjust(bottom=0.2)
+    ax.set_ylabel("Number of Uploads per Day")
 
     ax.legend(handles, unique_locations)
 
-    fig.suptitle(f"Daily River Image Uploads by Location{', filtered' if filter_data else ''}")
-    
+    fig.suptitle(
+        f"Daily River Image Uploads by Location{', filtered' if filter_data else ''}")
 
     print("Saving Figure..")
     fig.savefig('daily-river-image-uploads-by-location.png')
 
     print("Done")
-    plt.show() # must come after any savefig, as it also clears the plots
+    plt.show()  # must come after any savefig, as it also clears the plots
 
 if __name__ == "__main__":
     main()
