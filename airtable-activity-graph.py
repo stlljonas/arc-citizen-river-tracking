@@ -41,15 +41,16 @@ def main():
     y = [dates.count(date) for date in x]
     print(f"Average Uploads per Day: {len(dates)/len(x)}")
     plt.bar(x, y)
-    plt.title('Daily River Image Uploads at Kornhausbrücke')
+    plt.title('Daily River Image Uploads at All Locations')
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%b-%Y'))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=7))
     plt.gcf().autofmt_xdate()
     plt.yticks(range(min(y), max(y) + 1))
-    plt.show()
 
     print("Saving Figure..")
-    plt.savefig('Daily River Image Uploads at Kornhausbrücke.png')
+    plt.savefig('Daily River Image Uploads at All Locations.png')
+
+    plt.show() # must come after savefig(), as it wipes the plot
 
     print("Done")
 
